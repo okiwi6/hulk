@@ -5274,6 +5274,7 @@ dependencies = [
  "egui_extras",
  "glob",
  "lyon_tessellation",
+ "serde",
  "serde_json",
 ]
 
