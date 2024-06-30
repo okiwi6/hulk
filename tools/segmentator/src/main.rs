@@ -1,7 +1,7 @@
+mod export;
 pub mod polygon;
 mod preview_widget;
 pub mod segmentator_widget;
-mod export;
 
 use std::path::PathBuf;
 
@@ -44,7 +44,7 @@ impl App for SegmentatorApp {
         egui_extras::install_image_loaders(ctx);
 
         TopBottomPanel::bottom("Preview")
-            .exact_height(200.0)
+            .min_height(200.0)
             .show(ctx, |ui| {
                 ui.add(PreviewWidget::new(
                     &self.image_paths,
