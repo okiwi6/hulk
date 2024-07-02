@@ -64,7 +64,10 @@ pub struct SegmentatorApp {
 
 impl SegmentatorApp {
     pub fn new() -> Self {
-        let image_paths = glob::glob("/home/ole/Documents/Programs/programs/ultralytics/datasets/SPLObjDetectDatasetV2/test/images/*.png").expect("fail").flatten().collect();
+        let image_paths = glob::glob("/home/rasmus/Downloads/Felix/*.png")
+            .expect("fail")
+            .flatten()
+            .collect();
         Self {
             image_paths,
             current_index: None,

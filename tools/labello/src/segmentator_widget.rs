@@ -1,7 +1,11 @@
 use std::{collections::BTreeMap, mem::take, path::PathBuf};
 
-use eframe::egui::{
-    emath::RectTransform, Color32, Image, Key, PointerButton, Pos2, Rect, Sense, Widget,
+use eframe::{
+    egui::{
+        emath::RectTransform, Color32, Image, PointerButton, Pos2, Rect, Sense, TextureOptions,
+        Widget,
+    },
+    epaint::{Shape, Stroke, Vec2},
 };
 use serde::Serialize;
 
@@ -49,13 +53,26 @@ impl<'ui> Segmentator<'ui> {
 
 impl<'ui> Widget for Segmentator<'ui> {
     fn ui(self, ui: &mut eframe::egui::Ui) -> eframe::egui::Response {
+        let (response, painter) = ui.allocate_painter(Vec2::new(300.0, 300.0), Sense::click());
+        painter.rect_stroke(painter.clip_rect(), 0.0, Stroke::new(2.0, Color32::RED));
+
         let uri = format!("file://{}", self.image_path.display());
         let image = Image::new(uri)
             .show_loading_spinner(true)
             .maintain_aspect_ratio(true)
             .shrink_to_fit()
             .sense(Sense::click());
-        let response = ui.add(image);
+        let texture_id = ui.ctx().try_load_texture(
+            &uri,
+            TextureOptions::default(),
+            eframe::egui::SizeHint::Scale(1.0.into()),
+        );
+        painter.add(Shape::image(
+            texture_id,
+            painter.clip_rect(),
+            Rect::from_min_max(Pos2::new(0.0, 0.0), Pos2::new(1.0, 1.0)),
+            Color32::WHITE,
+        ));
 
         let transform = RectTransform::from_to(
             response.rect,
