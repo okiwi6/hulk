@@ -1149,6 +1149,7 @@
       "defender_aggressive_ring_radius": 2.0,
       "defender_passive_ring_radius": 1.7,
       "defender_y_offset": 0.8,
+      "defender_base_radius": 0.15,
       "left_midfielder_distance_to_ball": 2.5,
       "left_midfielder_maximum_x_in_ready_and_when_ball_is_not_free": -1.5,
       "left_midfielder_minimum_x": 2.25,

@@ -74,6 +74,7 @@ pub struct LookActionParameters {
 )]
 pub struct RolePositionsParameters {
     pub defender_aggressive_ring_radius: f32,
+    pub defender_base_radius: f32,
     pub defender_passive_ring_radius: f32,
     pub defender_y_offset: f32,
     pub left_midfielder_distance_to_ball: f32,

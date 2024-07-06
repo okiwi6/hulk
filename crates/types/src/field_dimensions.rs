@@ -100,4 +100,21 @@ impl FieldDimensions {
     pub fn center(&self) -> Point2<Field> {
         Point2::origin()
     }
+
+    pub fn left_goalpost(&self, half: Half) -> Point2<Field> {
+        let sign = match half {
+            Half::Own => -1.0,
+            Half::Opponent => 1.0,
+        };
+        point![
+            sign * self.length / 2.0,
+            -sign * self.goal_inner_width / 2.0
+        ]
+    }
+
+    pub fn right_goalpost(&self, half: Half) -> Point2<Field> {
+        let mut left_goalpost = self.left_goalpost(half);
+        left_goalpost.inner.y = -left_goalpost.inner.y;
+        left_goalpost
+    }
 }

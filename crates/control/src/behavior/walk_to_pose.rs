@@ -201,6 +201,50 @@ impl<'cycle> WalkAndStand<'cycle> {
             ))
         }
     }
+
+    pub fn return_to_defend(
+        &self,
+        target_pose: Pose2<Ground>,
+        head: HeadMotion,
+        orient_towards: Orientation2<Ground>,
+        path_obstacles_output: &mut AdditionalOutput<Vec<PathObstacle>>,
+    ) -> Option<MotionCommand> {
+        let ground_to_field = self.world_state.robot.ground_to_field?;
+        let distance_to_walk = target_pose.position().coords().norm();
+        let angle_to_walk = target_pose.orientation().angle();
+        let was_standing_last_cycle =
+            matches!(self.last_motion_command, MotionCommand::Stand { .. });
+        let is_reached = less_than_with_hysteresis(
+            was_standing_last_cycle,
+            distance_to_walk,
+            self.parameters.target_reached_thresholds.x + self.parameters.hysteresis.x,
+            self.parameters.hysteresis.x,
+        ) && less_than_with_hysteresis(
+            was_standing_last_cycle,
+            angle_to_walk.abs(),
+            self.parameters.target_reached_thresholds.y + self.parameters.hysteresis.y,
+            self.parameters.hysteresis.y,
+        );
+
+        if is_reached {
+            Some(MotionCommand::Stand { head })
+        } else {
+            let path = self.walk_path_planner.plan(
+                target_pose.position(),
+                ground_to_field,
+                self.world_state.ball.map(|ball| ball.ball_in_ground),
+                1.0,
+                &self.world_state.obstacles,
+                &self.world_state.rule_obstacles,
+                path_obstacles_output,
+            );
+            Some(self.walk_path_planner.walk_with_obstacle_avoiding_arms(
+                head,
+                OrientationMode::Override(orient_towards),
+                path,
+            ))
+        }
+    }
 }
 
 pub fn hybrid_alignment(
