@@ -1,4 +1,5 @@
 pub mod debounce_button;
+pub mod fit_normal_distribution;
 pub mod hysteresis;
 pub mod kalman_filter;
 pub mod low_pass_filter;

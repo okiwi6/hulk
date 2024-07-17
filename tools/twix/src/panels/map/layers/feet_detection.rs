@@ -1,11 +1,14 @@
 use std::sync::Arc;
 
 use color_eyre::Result;
-use eframe::epaint::Color32;
+use eframe::{egui::Stroke, epaint::Color32};
 
 use coordinate_systems::Ground;
-use linear_algebra::Point2;
-use types::{detected_feet::ClusterPoint, field_dimensions::FieldDimensions};
+use linear_algebra::{IntoFramed, Point2};
+use types::{
+    detected_feet::{ClusterPoint, DetectedFeet},
+    field_dimensions::FieldDimensions,
+};
 
 use crate::{
     nao::Nao, panels::map::layer::Layer, twix_painter::TwixPainter, value_buffer::BufferHandle,
@@ -16,6 +19,8 @@ pub struct FeetDetection {
     cluster_top: BufferHandle<Option<Vec<Point2<Ground>>>>,
     cluster_points_bottom: BufferHandle<Option<Vec<ClusterPoint>>>,
     cluster_points_top: BufferHandle<Option<Vec<ClusterPoint>>>,
+    detection_bottom: BufferHandle<Vec<DetectedFeet>>,
+    detection_top: BufferHandle<Vec<DetectedFeet>>,
 }
 
 impl Layer<Ground> for FeetDetection {
@@ -30,11 +35,16 @@ impl Layer<Ground> for FeetDetection {
             nao.subscribe_value("VisionBottom.additional_outputs.feet_detection.cluster_points");
         let cluster_points_top =
             nao.subscribe_value("VisionTop.additional_outputs.feet_detection.cluster_points");
+        let detection_bottom = nao.subscribe_value("VisionBottom.main_outputs.detected_feet");
+        let detection_top = nao.subscribe_value("VisionTop.main_outputs.detected_feet");
+
         Self {
             cluster_bottom,
             cluster_top,
             cluster_points_bottom,
             cluster_points_top,
+            detection_bottom,
+            detection_top,
         }
     }
 
@@ -68,6 +78,29 @@ impl Layer<Ground> for FeetDetection {
                 painter.circle_filled(point.position_in_ground, radius, Color32::RED);
             }
         }
+        if let Some(detection) = self.detection_bottom.get_last_value()? {
+            for feet in detection {
+                let distribution = feet.detection_in_ground;
+                painter.covariance(
+                    distribution.mean.framed().as_point(),
+                    distribution.covariance,
+                    Stroke::new(0.02, Color32::BLACK),
+                    Color32::RED.gamma_multiply(0.5),
+                );
+            }
+        }
+        if let Some(detection) = self.detection_top.get_last_value()? {
+            for feet in detection {
+                let distribution = feet.detection_in_ground;
+                painter.covariance(
+                    distribution.mean.framed().as_point(),
+                    distribution.covariance,
+                    Stroke::new(0.02, Color32::BLACK),
+                    Color32::RED.gamma_multiply(0.5),
+                );
+            }
+        }
+
         Ok(())
     }
 }

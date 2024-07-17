@@ -1,5 +1,6 @@
 use color_eyre::Result;
 use compiled_nn::CompiledNN;
+use nalgebra::Matrix2;
 use serde::{Deserialize, Serialize};
 
 use context_attribute::context;
@@ -7,7 +8,7 @@ use coordinate_systems::Pixel;
 use framework::{deserialize_not_implemented, AdditionalOutput, MainOutput};
 use geometry::{circle::Circle, rectangle::Rectangle};
 use hardware::PathsInterface;
-use linear_algebra::{point, vector, IntoFramed, Vector2};
+use linear_algebra::{point, vector, Vector2};
 use projection::{camera_matrix::CameraMatrix, Projection};
 use types::{
     ball_detection::{BallPercept, CandidateEvaluation},
@@ -352,9 +353,9 @@ fn project_balls_to_ground(
             let projected_covariance = {
                 let scaled_noise = measurement_noise
                     .inner
-                    .map(|x| (cluster.circle.radius * x).powi(2))
-                    .framed();
-                camera_matrix.project_noise_to_ground(position, scaled_noise)
+                    .map(|x| (cluster.circle.radius * x).powi(2));
+                camera_matrix
+                    .project_noise_to_ground(position, Matrix2::from_diagonal(&scaled_noise))
             }
             .ok()?;
 

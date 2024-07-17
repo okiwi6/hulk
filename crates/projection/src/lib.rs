@@ -9,7 +9,7 @@ use thiserror::Error;
 
 use crate::camera_matrix::CameraMatrix;
 use coordinate_systems::{Camera, Ground, Pixel, Robot};
-use linear_algebra::{point, vector, Isometry3, Point2, Point3, Vector2, Vector3};
+use linear_algebra::{point, vector, Isometry3, Point2, Point3, Vector3};
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -47,7 +47,7 @@ pub trait Projection {
     fn project_noise_to_ground(
         &self,
         ground_coordinates: Point2<Ground>,
-        noise: Vector2<Pixel>,
+        noise: Matrix2<f32>,
     ) -> Result<Matrix2<f32>, Error>;
     fn robot_to_pixel(&self, robot_coordinates: Point3<Robot>) -> Result<Point2<Pixel>, Error>;
 }
@@ -150,7 +150,7 @@ impl Projection for CameraMatrix {
     fn project_noise_to_ground(
         &self,
         ground_coordinates: Point2<Ground>,
-        noise: Vector2<Pixel>,
+        noise: Matrix2<f32>,
     ) -> Result<Matrix2<f32>, Error> {
         let gamma = self
             .ground_to_pixel
@@ -167,7 +167,7 @@ impl Projection for CameraMatrix {
                 inverse.m21 - inverse.m31 * y, inverse.m22 - inverse.m32 * y;
             ];
 
-        Ok(noise_projection * Matrix2::from_diagonal(&noise.inner) * noise_projection.transpose())
+        Ok(noise_projection * noise * noise_projection.transpose())
     }
 
     fn bearing(&self, pixel_coordinates: Point2<Pixel>) -> Vector3<Camera> {

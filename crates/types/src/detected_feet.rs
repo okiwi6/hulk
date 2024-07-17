@@ -4,11 +4,13 @@ use serde::{Deserialize, Serialize};
 
 use coordinate_systems::{Ground, Pixel};
 
+use crate::multivariate_normal_distribution::MultivariateNormalDistribution;
+
 #[derive(
     Default, Clone, Debug, Deserialize, Serialize, PathSerialize, PathDeserialize, PathIntrospect,
 )]
 pub struct DetectedFeet {
-    pub positions: Vec<Point2<Ground>>,
+    pub detection_in_ground: MultivariateNormalDistribution<2>,
 }
 
 #[derive(
@@ -23,8 +25,19 @@ pub struct ClusterPoint {
     Default, Clone, Debug, Deserialize, Serialize, PathSerialize, PathDeserialize, PathIntrospect,
 )]
 pub struct CountedCluster {
-    pub mean: Point2<Ground>,
-    pub samples: usize,
     pub leftmost_point: Point2<Ground>,
     pub rightmost_point: Point2<Ground>,
+    pub running_mean_in_ground: Point2<Ground>,
+    pub samples: Vec<Point2<Pixel, u16>>,
+}
+
+impl From<ClusterPoint> for CountedCluster {
+    fn from(other: ClusterPoint) -> Self {
+        CountedCluster {
+            running_mean_in_ground: other.position_in_ground,
+            samples: vec![other.pixel_coordinates],
+            leftmost_point: other.position_in_ground,
+            rightmost_point: other.position_in_ground,
+        }
+    }
 }

@@ -55,8 +55,8 @@ pub struct CycleContext {
         Parameter<f32, "obstacle_filter.robot_obstacle_radius_at_hip_height">,
     unknown_obstacle_radius: Parameter<f32, "obstacle_filter.unknown_obstacle_radius">,
 
-    detected_feet_bottom: PerceptionInput<DetectedFeet, "VisionBottom", "detected_feet">,
-    detected_feet_top: PerceptionInput<DetectedFeet, "VisionTop", "detected_feet">,
+    detected_feet_bottom: PerceptionInput<Vec<DetectedFeet>, "VisionBottom", "detected_feet">,
+    detected_feet_top: PerceptionInput<Vec<DetectedFeet>, "VisionTop", "detected_feet">,
 }
 
 #[context]
@@ -121,19 +121,21 @@ impl ObstacleFilter {
                 let measured_positions_in_control_cycle = feet_top
                     .iter()
                     .chain(feet_bottom.iter())
-                    .flat_map(|obstacles| obstacles.positions.iter());
+                    .flat_map(|obstacles| {
+                        obstacles
+                            .iter()
+                            .map(|obstacle| obstacle.detection_in_ground)
+                    });
 
-                for position in measured_positions_in_control_cycle {
+                for detection in measured_positions_in_control_cycle {
                     self.update_hypotheses_with_measurement(
-                        *position,
+                        detection.mean.framed().as_point(),
                         ObstacleKind::Robot,
                         *detection_time,
                         context
                             .obstacle_filter_parameters
                             .feet_detection_measurement_matching_distance,
-                        Matrix2::from_diagonal(
-                            &context.obstacle_filter_parameters.feet_measurement_noise,
-                        ),
+                        detection.covariance,
                     );
                 }
             }

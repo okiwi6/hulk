@@ -18,3 +18,12 @@ pub struct MultivariateNormalDistribution<const DIMENSION: usize> {
     #[path_serde(leaf)]
     pub covariance: SMatrix<f32, DIMENSION, DIMENSION>,
 }
+
+impl<const N: usize> Default for MultivariateNormalDistribution<N> {
+    fn default() -> Self {
+        Self {
+            mean: SVector::zeros(),
+            covariance: SMatrix::identity(),
+        }
+    }
+}

@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use context_attribute::context;
 use filtering::{
+    fit_normal_distribution::Fit,
     mean_clustering::MeanClustering,
     statistics::{mean, standard_deviation},
 };
@@ -17,6 +18,7 @@ use types::{
     filtered_segments::FilteredSegments,
     image_segments::{EdgeType, ScanLine, Segment},
     line_data::LineData,
+    multivariate_normal_distribution::MultivariateNormalDistribution,
 };
 
 #[derive(Deserialize, Serialize)]
@@ -52,7 +54,7 @@ pub struct CycleContext {
 #[context]
 #[derive(Default)]
 pub struct MainOutputs {
-    pub detected_feet: MainOutput<DetectedFeet>,
+    pub detected_feet: MainOutput<Vec<DetectedFeet>>,
 }
 
 impl FeetDetection {
@@ -82,22 +84,44 @@ impl FeetDetection {
             cluster_scored_cluster_points(cluster_points, *context.maximum_cluster_distance);
         let clusters_in_ground: Vec<_> = clusters_in_ground
             .into_iter()
-            .filter(|cluster| cluster.samples > *context.minimum_samples_per_cluster)
+            .filter(|cluster| cluster.samples.len() > *context.minimum_samples_per_cluster)
             .filter(|cluster| {
                 cluster.rightmost_point.y() - cluster.leftmost_point.y()
                     >= *context.minimum_feet_width
             })
             .collect();
+
         context
             .clusters_in_ground
             .fill_if_subscribed(|| clusters_in_ground.clone());
 
-        let positions = clusters_in_ground
-            .into_iter()
-            .map(|cluster| cluster.mean)
+        let detections: Vec<_> = clusters_in_ground
+            .iter()
+            .filter_map(|cluster| {
+                let samples = cluster
+                    .samples
+                    .iter()
+                    .map(|point| point.inner.cast())
+                    .collect();
+                let distribution = MultivariateNormalDistribution::fit(samples);
+                let ground_point = cluster.running_mean_in_ground;
+
+                let projected_noise = context
+                    .camera_matrix
+                    .project_noise_to_ground(ground_point, distribution.covariance)
+                    .ok()?;
+
+                Some(DetectedFeet {
+                    detection_in_ground: MultivariateNormalDistribution {
+                        mean: ground_point.inner.coords,
+                        covariance: projected_noise,
+                    },
+                })
+            })
             .collect();
+
         Ok(MainOutputs {
-            detected_feet: DetectedFeet { positions }.into(),
+            detected_feet: detections.into(),
         })
     }
 }
@@ -133,6 +157,7 @@ fn extract_segment_cluster_points(
                 return None;
             }
             let pixel_coordinates = point![scan_line.position, cluster.last().unwrap().end];
+
             let position_in_ground = camera_matrix
                 .pixel_to_ground(pixel_coordinates.map(|x| x as f32))
                 .ok()?;
@@ -211,7 +236,7 @@ fn cluster_scored_cluster_points(
         let nearest_cluster = clusters
             .iter_mut()
             .filter_map(|cluster| {
-                let distance = distance(cluster.mean, point.position_in_ground);
+                let distance = distance(cluster.running_mean_in_ground, point.position_in_ground);
                 if distance < maximum_cluster_distance {
                     Some((cluster, distance))
                 } else {
@@ -222,13 +247,8 @@ fn cluster_scored_cluster_points(
                 left_distance.total_cmp(right_distance)
             });
         match nearest_cluster {
-            Some((cluster, _)) => cluster.push(point.position_in_ground),
-            None => clusters.push(CountedCluster {
-                mean: point.position_in_ground,
-                samples: 1,
-                leftmost_point: point.position_in_ground,
-                rightmost_point: point.position_in_ground,
-            }),
+            Some((cluster, _)) => cluster.push(point),
+            None => clusters.push(CountedCluster::from(point)),
         }
     }
     clusters
