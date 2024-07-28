@@ -1475,6 +1475,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "configuration_system_derive"
+version = "0.1.0"
+dependencies = [
+ "proc-macro-error",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.69",
+]
+
+[[package]]
 name = "console"
 version = "0.15.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5568,6 +5578,7 @@ version = "0.1.0"
 dependencies = [
  "color-eyre",
  "configuration_system",
+ "configuration_system_derive",
  "eframe",
  "egui_extras",
  "glob",
@@ -6493,6 +6504,7 @@ dependencies = [
  "color-eyre",
  "communication",
  "configuration_system",
+ "configuration_system_derive",
  "convert_case 0.6.0",
  "coordinate_systems",
  "dirs",

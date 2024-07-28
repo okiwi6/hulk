@@ -11,6 +11,7 @@ members = [
   "crates/code_generation",
   "crates/communication",
   "crates/configuration_system",
+  "crates/configuration_system_derive",
   "crates/constants",
   "crates/context_attribute",
   "crates/control",
@@ -91,6 +92,7 @@ clap_complete = "4.2.1"
 code_generation = { path = "crates/code_generation" }
 color-eyre = "0.6.2"
 configuration_system = { path = "crates/configuration_system" }
+configuration_system_derive = { path = "crates/configuration_system_derive" }
 communication = { path = "crates/communication" }
 compiled-nn = "0.12.0"
 constants = { path = "crates/constants" }

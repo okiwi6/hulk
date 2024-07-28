@@ -1,4 +1,5 @@
-use configuration_system::{Configuration, Merge};
+use configuration_system::Configuration;
+use configuration_system_derive::Merge;
 use serde::Deserialize;
 
 pub mod keybind_plugin;
@@ -7,21 +8,13 @@ pub mod keys;
 const DEFAULT_CONFIG: &str = include_str!("../config_default.toml");
 
 #[cfg_attr(test, derive(PartialEq))]
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Merge)]
 pub struct TwixConfiguration {
     pub keys: keys::Keybinds,
 }
 
 impl Configuration for TwixConfiguration {
     const DEFAULT_FILENAME: &'static str = "twix.toml";
-}
-
-impl Merge for TwixConfiguration {
-    fn merge(&mut self, other: Self) {
-        let Self { keys } = other;
-
-        self.keys.merge(keys);
-    }
 }
 
 impl Default for TwixConfiguration {
@@ -33,6 +26,7 @@ impl Default for TwixConfiguration {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use configuration_system::Merge;
 
     #[test]
     fn parse_default_config() {

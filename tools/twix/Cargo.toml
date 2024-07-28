@@ -7,6 +7,7 @@ homepage.workspace = true
 
 [dependencies]
 configuration_system.workspace = true
+configuration_system_derive.workspace = true
 aliveness = { workspace = true }
 argument_parsers = { workspace = true }
 ball_filter = { workspace = true }

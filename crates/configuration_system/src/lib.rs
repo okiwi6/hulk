@@ -83,3 +83,5 @@ impl_merge!(usize);
 impl_merge!(isize);
 impl_merge!(f32);
 impl_merge!(f64);
+impl_merge!(String);
+// Add more primitive types here if you need them

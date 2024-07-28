@@ -8,7 +8,8 @@ pub mod segmentator_widget;
 use std::{io::Cursor, path::PathBuf};
 
 use color_eyre::{eyre::eyre, Result};
-use configuration_system::{Configuration, Merge};
+use configuration_system::Configuration;
+use configuration_system_derive::Merge;
 use control_pane::ControlPane;
 use eframe::{
     egui::{vec2, CentralPanel, Context, IconData, SidePanel, TopBottomPanel, ViewportBuilder},
@@ -20,7 +21,7 @@ use preview_widget::PreviewWidget;
 use segmentator_widget::{SegmentationState, Segmentator};
 use serde::Deserialize;
 
-#[derive(Default, Deserialize, Debug)]
+#[derive(Debug, Default, Deserialize, Merge)]
 struct SegmentatorConfiguration {
     github_username: Option<String>,
 }
@@ -29,10 +30,10 @@ impl Configuration for SegmentatorConfiguration {
     const DEFAULT_FILENAME: &'static str = "segmentator.toml";
 }
 
-impl Merge for SegmentatorConfiguration {
-    fn merge(&mut self, other: Self) {
-        self.github_username.merge(other.github_username)
-    }
+#[derive(Merge)]
+struct TestConfiguration {
+    foo: usize,
+    bar: String,
 }
 
 fn app_icon() -> IconData {
