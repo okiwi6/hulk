@@ -8,6 +8,7 @@ pub mod segmentator_widget;
 use std::{io::Cursor, path::PathBuf};
 
 use color_eyre::{eyre::eyre, Result};
+use configuration_system::{Configuration, Merge};
 use control_pane::ControlPane;
 use eframe::{
     egui::{vec2, CentralPanel, Context, IconData, SidePanel, TopBottomPanel, ViewportBuilder},
@@ -17,6 +18,22 @@ use github_integration::GithubAccount;
 use image::ImageReader;
 use preview_widget::PreviewWidget;
 use segmentator_widget::{SegmentationState, Segmentator};
+use serde::Deserialize;
+
+#[derive(Default, Deserialize, Debug)]
+struct SegmentatorConfiguration {
+    github_username: Option<String>,
+}
+
+impl Configuration for SegmentatorConfiguration {
+    const DEFAULT_FILENAME: &'static str = "segmentator.toml";
+}
+
+impl Merge for SegmentatorConfiguration {
+    fn merge(&mut self, other: Self) {
+        self.github_username.merge(other.github_username)
+    }
+}
 
 fn app_icon() -> IconData {
     let app_icon = include_bytes!("../labello.png");
@@ -49,7 +66,12 @@ fn main() -> Result<()> {
         native_options,
         Box::new(|cc| {
             egui_extras::install_image_loaders(&cc.egui_ctx);
-            Ok(Box::new(SegmentatorApp::new()))
+
+            let configuration = SegmentatorConfiguration::load()?;
+
+            let app = SegmentatorApp::new(configuration);
+
+            Ok(Box::new(app))
         }),
     )
     .map_err(|error| eyre!(error.to_string()))
@@ -57,18 +79,21 @@ fn main() -> Result<()> {
 
 #[derive(Debug, Default)]
 pub struct SegmentatorApp {
+    configuration: SegmentatorConfiguration,
     image_paths: Vec<PathBuf>,
     current_index: Option<usize>,
     state: SegmentationState,
 }
 
 impl SegmentatorApp {
-    pub fn new() -> Self {
+    fn new(configuration: SegmentatorConfiguration) -> Self {
         let image_paths = glob::glob("/home/rasmus/Downloads/Felix/*.png")
             .expect("fail")
             .flatten()
             .collect();
+
         Self {
+            configuration,
             image_paths,
             current_index: None,
             state: SegmentationState::default(),

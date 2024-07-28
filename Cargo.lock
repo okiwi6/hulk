@@ -1464,6 +1464,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "configuration_system"
+version = "0.1.0"
+dependencies = [
+ "dirs",
+ "log",
+ "serde",
+ "thiserror",
+ "toml",
+]
+
+[[package]]
 name = "console"
 version = "0.15.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5556,6 +5567,7 @@ name = "segmentator"
 version = "0.1.0"
 dependencies = [
  "color-eyre",
+ "configuration_system",
  "eframe",
  "egui_extras",
  "glob",
@@ -6480,6 +6492,7 @@ dependencies = [
  "clap 4.5.13",
  "color-eyre",
  "communication",
+ "configuration_system",
  "convert_case 0.6.0",
  "coordinate_systems",
  "dirs",

@@ -19,8 +19,9 @@ use completion_edit::CompletionEdit;
 use configuration::{
     keybind_plugin::{self, KeybindSystem},
     keys::KeybindAction,
-    Configuration,
+    TwixConfiguration,
 };
+use configuration_system::Configuration;
 use eframe::{
     egui::{CentralPanel, Context, Id, Layout, TopBottomPanel, Ui, Widget, WidgetText},
     emath::Align,
@@ -98,7 +99,7 @@ fn main() -> Result<(), eframe::Error> {
             .unwrap();
     }
 
-    let configuration = Configuration::load()
+    let configuration = TwixConfiguration::load()
         .unwrap_or_else(|error| panic!("failed to load configuration: {error}"));
 
     run_native(
@@ -188,7 +189,7 @@ impl TwixApp {
     fn create(
         creation_context: &CreationContext,
         arguments: Arguments,
-        configuration: Configuration,
+        configuration: TwixConfiguration,
     ) -> Self {
         let address = arguments
             .address

@@ -1,5 +1,6 @@
 use std::{collections::HashMap, fmt};
 
+use configuration_system::Merge;
 use eframe::egui::{Key, Modifiers};
 use serde::{
     de::{self, Deserializer},
@@ -144,12 +145,14 @@ impl Keybinds {
         }
     }
 
-    pub fn merge(&mut self, other: Self) {
-        self.keybinds.extend(other.keybinds);
-    }
-
     pub fn iter(&self) -> impl Iterator<Item = (&KeybindTrigger, &KeybindAction)> {
         self.keybinds.iter()
+    }
+}
+
+impl Merge for Keybinds {
+    fn merge(&mut self, other: Self) {
+        self.keybinds.extend(other.keybinds);
     }
 }
 
