@@ -1,11 +1,11 @@
-use std::path::PathBuf;
+use std::{collections::BTreeMap, mem::take, path::PathBuf};
 
 use eframe::egui::{
-    emath::RectTransform, Color32, Image, PointerButton, Pos2, Rect, Sense, Widget,
+    emath::RectTransform, Color32, Image, Key, PointerButton, Pos2, Rect, Sense, Widget,
 };
 use serde::Serialize;
 
-use crate::polygon::paint_polygon;
+use crate::polygon::{paint_polygon, FixedPolygon, FixedPolygonBuilder};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 pub enum Class {
@@ -13,18 +13,36 @@ pub enum Class {
     Line,
 }
 
+#[derive(Debug, Default)]
+pub struct SegmentationState {
+    pub polygons: BTreeMap<Class, Vec<FixedPolygon>>,
+    pub current_vertices: Vec<Pos2>,
+}
+
+impl SegmentationState {
+    fn finish(&mut self, class: Class) {
+        let border = take(&mut self.current_vertices);
+        let polygon = FixedPolygonBuilder::new(border)
+            .color(Color32::RED.gamma_multiply(0.4))
+            .build();
+        self.polygons.entry(class).or_default().push(polygon);
+    }
+
+    fn cancel(&mut self) {
+        self.current_vertices.clear();
+    }
+}
+
 pub struct Segmentator<'ui> {
     image_path: &'ui PathBuf,
-    // polygons: BTreeMap<Class, Vec<Polygon>>,
-    vertices: &'ui mut Vec<Pos2>,
+    polygons: &'ui mut SegmentationState,
 }
 
 impl<'ui> Segmentator<'ui> {
-    pub fn new(image_path: &'ui PathBuf, vertices: &'ui mut Vec<Pos2>) -> Self {
+    pub fn new(image_path: &'ui PathBuf, state: &'ui mut SegmentationState) -> Self {
         Segmentator {
             image_path,
-            // polygons: BTreeMap::new(),
-            vertices,
+            polygons: state,
         }
     }
 }
@@ -44,22 +62,31 @@ impl<'ui> Widget for Segmentator<'ui> {
             Rect::from_min_max(Pos2::new(0.0, 0.0), Pos2::new(1.0, 1.0)),
         );
 
-        let new_point = response
+        for polygon in self.polygons.polygons.values().flatten() {
+            polygon.paint(ui.painter(), transform.inverse());
+        }
+
+        let mouse = response
             .hover_pos()
             .map(|position| transform.transform_pos(position));
 
         if response.clicked_by(PointerButton::Primary) {
-            self.vertices.extend(new_point);
+            self.polygons.current_vertices.extend(mouse);
         }
-
-        dbg!(&new_point);
 
         paint_polygon(
             ui.painter(),
-            self.vertices.iter().copied().chain(new_point),
+            self.polygons.current_vertices.iter().copied().chain(mouse),
             transform.inverse(),
             Color32::RED,
         );
+
+        if ui.input(|input| input.key_pressed(Key::Escape)) {
+            self.polygons.cancel();
+        }
+        if ui.input(|input| input.key_pressed(Key::F)) {
+            self.polygons.finish(Class::Field);
+        }
 
         response
     }

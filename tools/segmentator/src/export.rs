@@ -4,19 +4,19 @@ use color_eyre::{eyre::Context, Result};
 use eframe::egui::Pos2;
 use serde::Serialize;
 
-use crate::{polygon::Polygon, segmentator_widget::Class};
+use crate::{polygon::FixedPolygon, segmentator_widget::Class};
 
 #[derive(Debug, Serialize)]
 pub struct Export {
     segmentation: BTreeMap<Class, Vec<[Pos2; 3]>>,
 }
 
-impl From<BTreeMap<Class, Vec<Polygon>>> for Export {
-    fn from(polygons: BTreeMap<Class, Vec<Polygon>>) -> Self {
+impl From<BTreeMap<Class, Vec<FixedPolygon>>> for Export {
+    fn from(polygons: BTreeMap<Class, Vec<FixedPolygon>>) -> Self {
         let segmentation = polygons
             .into_iter()
             .map(|(class, polygons)| {
-                let triangles = polygons.iter().flat_map(Polygon::triangles).collect();
+                let triangles = polygons.iter().flat_map(FixedPolygon::triangles).collect();
                 (class, triangles)
             })
             .collect();

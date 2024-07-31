@@ -8,22 +8,49 @@ use lyon_tessellation::{
     VertexBuffers,
 };
 
-pub struct Polygon {
-    pub points: Vec<Pos2>,
+#[derive(Debug, Default)]
+pub struct FixedPolygon {
+    border: Vec<Pos2>,
+
+    vertices: Vec<Pos2>,
+    indices: Vec<u16>,
+    color: Color32,
 }
 
-impl Polygon {
-    pub fn new() -> Self {
-        Polygon { points: Vec::new() }
+#[derive(Debug, Default)]
+pub struct FixedPolygonBuilder {
+    points: Vec<Pos2>,
+    color: Color32,
+}
+
+impl FixedPolygonBuilder {
+    pub fn new(points: Vec<Pos2>) -> Self {
+        Self {
+            points,
+            ..Default::default()
+        }
     }
 
-    pub fn add_point(&mut self, point: Pos2) {
-        self.points.push(point);
+    pub fn color(mut self, color: Color32) -> Self {
+        self.color = color;
+        self
     }
 
+    pub fn build(self) -> FixedPolygon {
+        let (vertices, indices) = tessellate(&self.points);
+        FixedPolygon {
+            border: self.points,
+            vertices,
+            indices,
+            color: self.color,
+        }
+    }
+}
+
+impl FixedPolygon {
     pub fn triangles(&self) -> Vec<[Pos2; 3]> {
         let identity = RectTransform::identity(Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)));
-        let mesh = meshify(&self.points, identity, Color32::TRANSPARENT);
+        let mesh = to_mesh(&self.vertices, &self.indices, identity, self.color);
 
         mesh.indices
             .chunks_exact(3)
@@ -35,6 +62,25 @@ impl Polygon {
             })
             .collect()
     }
+
+    fn mesh(&self, transform: RectTransform) -> Mesh {
+        to_mesh(&self.vertices, &self.indices, transform, self.color)
+    }
+
+    pub fn paint(&self, painter: &Painter, transform: RectTransform) {
+        let mesh = self.mesh(transform);
+        painter.add(mesh);
+        painter.add(PathShape {
+            points: self
+                .border
+                .iter()
+                .map(|point| transform.transform_pos(*point))
+                .collect(),
+            closed: true,
+            stroke: Stroke::new(3.0, self.color),
+            fill: Color32::TRANSPARENT,
+        });
+    }
 }
 
 pub fn paint_polygon(
@@ -45,7 +91,8 @@ pub fn paint_polygon(
 ) {
     let points = points.collect::<Vec<_>>();
     if points.len() >= 3 {
-        let mesh = meshify(&points, transform, color.gamma_multiply(0.5));
+        let (vertices, indices) = tessellate(&points);
+        let mesh = to_mesh(&vertices, &indices, transform, color.gamma_multiply(0.5));
         painter.add(mesh);
     }
     if points.len() >= 2 {
@@ -62,7 +109,7 @@ pub fn paint_polygon(
     }
 }
 
-fn meshify(points: &[Pos2], transform: RectTransform, color: Color32) -> Mesh {
+fn tessellate(points: &[Pos2]) -> (Vec<Pos2>, Vec<u16>) {
     let path = {
         let mut path_builder = Path::builder();
         if let Some(first_point) = points.first() {
@@ -91,18 +138,30 @@ fn meshify(points: &[Pos2], transform: RectTransform, color: Color32) -> Mesh {
             .expect("failed to tessellate");
     }
 
+    let vertices = buffers
+        .vertices
+        .into_iter()
+        .map(|v| pos2(v.x, v.y))
+        .collect();
+    let indices = buffers.indices;
+
+    (vertices, indices)
+}
+fn to_mesh(vertices: &[Pos2], indices: &[u16], transform: RectTransform, color: Color32) -> Mesh {
+    let vertices = vertices
+        .iter()
+        .map(|v| Vertex {
+            pos: transform.transform_pos(*v),
+            uv: WHITE_UV,
+            color,
+        })
+        .collect();
+    let indices = indices.iter().map(|i| *i as u32).collect();
+
     Mesh {
-        vertices: buffers
-            .vertices
-            .iter()
-            .map(|v| Vertex {
-                pos: transform.transform_pos(Pos2::new(v.x, v.y)),
-                uv: WHITE_UV,
-                color,
-            })
-            .collect(),
-        indices: buffers.indices.into_iter().map(|i| i as u32).collect(),
         texture_id: TextureId::Managed(0),
+        indices,
+        vertices,
     }
 }
 

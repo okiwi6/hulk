@@ -51,7 +51,7 @@ members = [
   "tools/depp",
   "tools/fanta",
   "tools/hula/types",
-  "tools/pepsi", 
+  "tools/pepsi",
   "tools/segmentator",
   "tools/twix",
 ]
@@ -214,3 +214,4 @@ incremental = true
 [profile.release-with-debug]
 inherits = "release"
 debug = true
+
