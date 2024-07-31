@@ -1,0 +1,3 @@
+#!/usr/bin/fish
+
+rsync -rP --info=progress2 {tests, ssd, experiments, *.toml, *.py, *.txt} hulk@rechenknecht:~/queried-object-detection/

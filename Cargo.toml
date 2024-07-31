@@ -50,7 +50,7 @@ members = [
   "tools/camera_matrix_extractor",
   "tools/depp",
   "tools/fanta",
-  "tools/hula/types",
+  "tools/hula/types", "tools/machine-learning/object_detection/tools/ssd-viewer",
   "tools/pepsi",
   "tools/twix",
 ]
