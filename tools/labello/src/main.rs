@@ -1,5 +1,6 @@
 pub mod control_pane;
 mod export;
+pub mod github_integration;
 pub mod polygon;
 mod preview_widget;
 pub mod segmentator_widget;
@@ -12,6 +13,7 @@ use eframe::{
     egui::{CentralPanel, Context, SidePanel, TopBottomPanel},
     run_native, App, Frame, NativeOptions,
 };
+use github_integration::GithubAccount;
 use preview_widget::PreviewWidget;
 use segmentator_widget::{SegmentationState, Segmentator};
 
@@ -19,7 +21,10 @@ fn main() -> Result<()> {
     run_native(
         "Segmentator",
         NativeOptions::default(),
-        Box::new(|_cc| Box::new(SegmentatorApp::new())),
+        Box::new(|cc| {
+            egui_extras::install_image_loaders(&cc.egui_ctx);
+            Box::new(SegmentatorApp::new())
+        }),
     )
     .map_err(|error| eyre!(error.to_string()))
 }
@@ -44,8 +49,6 @@ impl SegmentatorApp {
 
 impl App for SegmentatorApp {
     fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
-        egui_extras::install_image_loaders(ctx);
-
         TopBottomPanel::bottom("Preview")
             .min_height(200.0)
             .show(ctx, |ui| {
@@ -54,9 +57,10 @@ impl App for SegmentatorApp {
                     &mut self.current_index,
                 ));
             });
-        SidePanel::right("Tools")
-            .resizable(false)
-            .show(ctx, |ui| ui.add(ControlPane));
+        SidePanel::right("Tools").resizable(false).show(ctx, |ui| {
+            ui.add(GithubAccount::new("oleflb"));
+            ui.add(ControlPane)
+        });
         CentralPanel::default().show(ctx, |ui| {
             if let Some(image_path) = self
                 .current_index

@@ -8,7 +8,7 @@ homepage.workspace = true
 [dependencies]
 color-eyre = { workspace = true }
 eframe = { workspace = true }
-egui_extras = { workspace = true, features = ["image", "file"] }
+egui_extras = { workspace = true, features = ["image", "file", "http"] }
 lyon_tessellation = "*"
 glob = { workspace = true }
 serde_json = { workspace = true }
