@@ -30,7 +30,7 @@ impl<'ui> Widget for PreviewWidget<'ui> {
                             let (id, rect) = ui.allocate_space(vec2(IMAGE_WIDTH, IMAGE_HEIGHT));
                             if ui.is_rect_visible(rect) {
                                 ui.interact(rect, id, Sense::click());
-                                let mut ui = ui.child_ui(rect, Layout::default());
+                                let mut ui = ui.child_ui(rect, Layout::default(), None);
                                 let image = Image::new(uri)
                                     .show_loading_spinner(true)
                                     .maintain_aspect_ratio(true)

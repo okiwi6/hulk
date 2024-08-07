@@ -1,7 +1,7 @@
 use eframe::{
-    egui::{pos2, Color32, Mesh, Painter, Pos2, Rect, Stroke, TextureId},
+    egui::{pos2, Color32, Mesh, Painter, Pos2, Rect, TextureId},
     emath::RectTransform,
-    epaint::{PathShape, Vertex, WHITE_UV},
+    epaint::{PathShape, PathStroke, Vertex, WHITE_UV},
 };
 use lyon_tessellation::{
     geometry_builder::simple_builder, math::Point, path::Path, FillOptions, FillTessellator,
@@ -77,7 +77,7 @@ impl FixedPolygon {
                 .map(|point| transform.transform_pos(*point))
                 .collect(),
             closed: true,
-            stroke: Stroke::new(3.0, self.color),
+            stroke: PathStroke::new(3.0, self.color),
             fill: Color32::TRANSPARENT,
         });
     }
@@ -103,7 +103,7 @@ pub fn paint_polygon(
                 .map(|point| transform.transform_pos(*point))
                 .collect(),
             closed: points.len() > 2,
-            stroke: Stroke::new(3.0, color),
+            stroke: PathStroke::new(3.0, color),
             fill: Color32::TRANSPARENT,
         });
     }

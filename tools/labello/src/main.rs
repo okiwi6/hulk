@@ -5,25 +5,51 @@ pub mod polygon;
 mod preview_widget;
 pub mod segmentator_widget;
 
-use std::path::PathBuf;
+use std::{io::Cursor, path::PathBuf};
 
 use color_eyre::{eyre::eyre, Result};
 use control_pane::ControlPane;
 use eframe::{
-    egui::{CentralPanel, Context, SidePanel, TopBottomPanel},
+    egui::{vec2, CentralPanel, Context, IconData, SidePanel, TopBottomPanel, ViewportBuilder},
     run_native, App, Frame, NativeOptions,
 };
 use github_integration::GithubAccount;
+use image::ImageReader;
 use preview_widget::PreviewWidget;
 use segmentator_widget::{SegmentationState, Segmentator};
 
+fn app_icon() -> IconData {
+    let app_icon = include_bytes!("../labello.png");
+    let image = ImageReader::new(Cursor::new(app_icon))
+        .with_guessed_format()
+        .expect("failed to guess app icon format")
+        .decode()
+        .expect("failed to decode app icon");
+    let (width, height) = (image.width(), image.height());
+
+    let rgba = image.into_rgba8();
+    IconData {
+        width,
+        height,
+        rgba: rgba.into_raw(),
+    }
+}
+
 fn main() -> Result<()> {
+    let viewport = ViewportBuilder::default()
+        .with_icon(app_icon())
+        .with_title("Labello");
+    let native_options = NativeOptions {
+        viewport,
+        ..Default::default()
+    };
+
     run_native(
-        "Segmentator",
-        NativeOptions::default(),
+        "Labello",
+        native_options,
         Box::new(|cc| {
             egui_extras::install_image_loaders(&cc.egui_ctx);
-            Box::new(SegmentatorApp::new())
+            Ok(Box::new(SegmentatorApp::new()))
         }),
     )
     .map_err(|error| eyre!(error.to_string()))
@@ -57,10 +83,17 @@ impl App for SegmentatorApp {
                     &mut self.current_index,
                 ));
             });
-        SidePanel::right("Tools").resizable(false).show(ctx, |ui| {
-            ui.add(GithubAccount::new("oleflb"));
-            ui.add(ControlPane)
-        });
+        SidePanel::right("Tools")
+            .resizable(false)
+            .min_width(200.0)
+            .show(ctx, |ui| {
+                let width = ui.available_width();
+                ui.allocate_ui(vec2(width, 50.0), |ui| {
+                    ui.add(GithubAccount::new("oleflb").hover_text("Test 123"));
+                });
+
+                ui.add(ControlPane)
+            });
         CentralPanel::default().show(ctx, |ui| {
             if let Some(image_path) = self
                 .current_index
