@@ -1,8 +1,7 @@
 import torch
-from torch import nn
 import torch.nn.functional as F
-
 from ssd.utils import assert_ndim
+from torch import nn
 
 
 class MulticropWrapper(nn.Module):
