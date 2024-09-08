@@ -1,16 +1,9 @@
 from collections.abc import Sized
 from typing import Generator, Iterable, Union
 
-from rich.progress import (
-    BarColumn,
-    MofNCompleteColumn,
-    Progress,
-    ProgressColumn,
-    Task,
-    TaskProgressColumn,
-    TextColumn,
-    TimeRemainingColumn,
-)
+from rich.progress import (BarColumn, MofNCompleteColumn, Progress,
+                           ProgressColumn, Task, TaskProgressColumn,
+                           TextColumn, TimeRemainingColumn)
 from rich.text import Text
 
 

@@ -1,8 +1,7 @@
 import torch
 import torch.nn.functional as F
-from torch import nn
-
 from ssd.utils import assert_ndim
+from torch import nn
 
 
 class CategoricalFocalLoss(nn.Module):

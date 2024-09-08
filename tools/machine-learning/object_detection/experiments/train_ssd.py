@@ -9,11 +9,15 @@ from rich.progress import MofNCompleteColumn, Progress
 from ssd.dataset import COCODataset, DetectionDataset, VocDataset
 from ssd.losses import QueryPointLoss
 from ssd.model import EfficientVitDetr
+from ssd.model.detection_model import EfficientVitSsd
 from ssd.task_aligner import TaskAlignedDetections
+from ssd.task_aligner.task_aligner import compute_anchors
 from ssd.utils import (DataLoaderConfig, OptimizerConfig, SchedulerConfig,
                        assert_ndim, bar, build_optimizer, build_scheduler,
-                       default_progress, build_dataloaders, datasets)
+                       default_progress)
+from ssd.utils.accelerate_setup import build_dataloaders, datasets
 from ssd.visualization import show_train_example
+from timm.scheduler.scheduler import Scheduler
 from torch import nn
 from torch.nn.modules.module import Module
 from torch.optim.optimizer import Optimizer
@@ -22,7 +26,6 @@ from torchmetrics.aggregation import MeanMetric
 from torchmetrics.classification import MulticlassF1Score
 
 wandb.require("core")
-
 
 def update_f1(
     outputs: torch.Tensor,
@@ -33,7 +36,7 @@ def update_f1(
     device = outputs.device
     matcher = TaskAlignedDetections()
 
-    predicted_classes = outputs[..., 4:].flatten(0, 1)
+    predicted_classes = outputs[..., 4:].flatten(0, -2)
     gt_boxes = [target["boxes"] for target in all_targets]
     gt_classes = [target["classes"] for target in all_targets]
 
@@ -41,16 +44,6 @@ def update_f1(
     selected_gt_classes = result.assigned_classes.flatten(0, 1)
 
     f1_score.update(predicted_classes, selected_gt_classes)
-
-
-def sample_query_points(
-    targets: list[dict[str, torch.Tensor]], num_query_points: int, device: torch.device
-) -> torch.Tensor:
-    batch_size = len(targets)
-    query_points = torch.zeros(batch_size, num_query_points, 2, device=device).uniform_(
-        0, 1
-    )
-    return query_points
 
 
 def main():
@@ -65,11 +58,10 @@ def main():
             "optimizer": optimizer_config.dict(),
             "scheduler": scheduler_config.dict(),
         },
+        mode = "disabled",
     )
 
-    accelerator = Accelerator(
-        # mixed_precision="fp16"
-    )
+    accelerator = Accelerator()
     device = accelerator.device
     print("Running on", device)
 
@@ -77,7 +69,7 @@ def main():
     train_loader, val_loader = build_dataloaders(dataloader_config, train_set, val_set)
 
     # Add one background class (index: 0)
-    model = EfficientVitDetr(train_set.n_classes() + 1)
+    model = EfficientVitSsd(train_set.n_classes() + 1)
     model.summary()
 
     criterion = QueryPointLoss()
@@ -105,10 +97,11 @@ def main():
             ).to(device)
             for images, targets in bar(train_loader, progress, "[red]Fit"):
                 optimizer.zero_grad()
-                query_points = sample_query_points(targets, 128, device)
-                outputs = model(images, query_points)[0]
-                losses = criterion(outputs, targets, query_points)
-                update_f1(outputs, targets, query_points, train_score)
+                outputs = model(images)[0]
+                _, h, w, _ = outputs.shape
+                anchors = compute_anchors(w, h).to(device)
+                losses = criterion(outputs, targets, anchors)
+                update_f1(outputs, targets, anchors, train_score)
 
                 combined_loss = losses.combine([1.0, 1.0])
                 assert combined_loss.isfinite(), "Loss is not finite"
@@ -148,10 +141,11 @@ def main():
 
             with torch.inference_mode():
                 for images, targets in bar(val_loader, progress, "[green]Val"):
-                    query_points = sample_query_points(targets, 128, device)
-                    outputs = model(images, query_points)[0]
-                    update_f1(outputs, targets, query_points, val_score)
-                    losses = criterion(outputs, targets, query_points)
+                    outputs = model(images)[0]
+                    _, h, w, _ = outputs.shape
+                    anchors = compute_anchors(w, h).to(device)
+                    losses = criterion(outputs, targets, anchors)
+                    update_f1(outputs, targets, anchors, val_score)
 
                     mean_classification_loss.update(losses.classification_loss)
                     mean_regression_loss.update(losses.box_regression_loss)
@@ -160,14 +154,15 @@ def main():
                 index = randint(0, len(val_set))
                 image, target = val_set[index]
                 image = image.unsqueeze(0).to(device)
-                query_points = sample_query_points([target], 32, device)
-                output = model(image, query_points)[0]
+                output = model(image)[0]
+                _, h, w, _ = output.shape
+                anchors = compute_anchors(w, h)
             fig = show_train_example(
-                image[0],
+                image[0].cpu(),
                 target,
                 train_set.classes(),
-                query_points[0].cpu(),
-                output[0].cpu(),
+                anchors,
+                output.cpu(),
             )
             mean_classification_loss = mean_classification_loss.compute()
             mean_regression_loss = mean_regression_loss.compute()
@@ -191,7 +186,7 @@ def main():
                 {f"val/f1/{name}": score for name, score in class_scores.items()},
                 step=global_train_step,
             )
-        model.ex1port_onnx("embedding.onnx", "detection.onnx")
+        model.export_onnx("ssd_embedding.onnx", "ssd_detection.onnx")
 
 
 if __name__ == "__main__":

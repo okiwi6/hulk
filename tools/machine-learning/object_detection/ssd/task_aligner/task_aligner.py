@@ -1,8 +1,8 @@
+from dataclasses import dataclass
+
 import torch
 from ssd.utils import assert_ndim, assert_shape
 from torch import nn
-
-from dataclasses import dataclass
 
 
 @dataclass
@@ -60,6 +60,10 @@ class TaskAlignedDetections(nn.Module):
         gt_boxes = []
         gt_classes = []
 
+        if isinstance(query_points, torch.Tensor) and query_points.ndim == 2:
+            # Query points are equal for all images
+            query_points = [query_points for _ in boxes]
+
         for points_in_image, boxes_in_image, classes_in_image in zip(
             query_points, boxes, classes
         ):
@@ -81,7 +85,7 @@ class TaskAlignedDetections(nn.Module):
 
 
 def compute_anchors(
-    xrange: tuple[float, float], width: int, yrange: tuple[float, float], height: int
+    width: int, height: int, xrange: tuple[float, float] = (0, 1), yrange: tuple[float, float] = (0, 1)
 ) -> torch.Tensor:
     min_x, max_x = xrange
     min_y, max_y = yrange
@@ -92,5 +96,5 @@ def compute_anchors(
     center_xs = torch.linspace(min_x + x_offset, max_x - x_offset, width)
     center_ys = torch.linspace(min_y + y_offset, max_y - y_offset, height)
 
-    grid = torch.meshgrid(center_xs, center_ys, indexing="ij")
+    grid = torch.meshgrid(center_xs, center_ys, indexing="xy")
     return torch.stack(grid, dim=-1).flatten(0, 1)

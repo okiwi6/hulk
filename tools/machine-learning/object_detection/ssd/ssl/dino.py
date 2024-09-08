@@ -1,8 +1,8 @@
-import torch
-from torch import nn
 from copy import deepcopy
 
-from ssd.model import MulticropWrapper, DINOHead
+import torch
+from ssd.model import DINOHead, MulticropWrapper
+from torch import nn
 
 
 def representation(model: nn.Module, crops: list[torch.Tensor]) -> list[torch.Tensor]:

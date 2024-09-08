@@ -1,6 +1,8 @@
 import torch
-from torch import nn
 import torch.nn.functional as F
+from torch import nn
+
+from ssd.utils.assert_shape import assert_ndim
 
 
 class BboxRegressionHead(nn.Module):
@@ -9,11 +11,13 @@ class BboxRegressionHead(nn.Module):
         self.regressor = nn.Linear(feature_size, 4)
 
     def forward(self, features: torch.Tensor, offset: torch.Tensor) -> torch.Tensor:
-        bbox = self.regressor(features)
+        assert_ndim(features, 3)
+        n, hw, d = features.shape
+        bbox = self.regressor(features.view(-1, d)).view(n, hw, 4)
 
         # assume bbox is xyxy format, offset is xy
-        bbox[:, :2] += offset
-        bbox[:, 2:] += offset
+        bbox[..., :2] += offset
+        bbox[..., 2:] += offset
 
         return bbox
 
@@ -24,9 +28,12 @@ class ClassPredictorHead(nn.Module):
         self.classifier = nn.Sequential(
             nn.Dropout(0.3), nn.Linear(feature_size, num_classes)
         )
+        self.num_classes = num_classes
 
     def forward(self, features: torch.Tensor) -> torch.Tensor:
-        return self.classifier(features)
+        assert_ndim(features, 3)
+        n, hw, d = features.shape
+        return self.classifier(features.view(-1, d)).view(n, hw, self.num_classes)
 
 
 class DINOHead(nn.Module):

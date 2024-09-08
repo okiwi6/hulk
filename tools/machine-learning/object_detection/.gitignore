@@ -2,3 +2,4 @@ datasets/
 data/
 .venv/
 .pytest_cache/
+wandb/

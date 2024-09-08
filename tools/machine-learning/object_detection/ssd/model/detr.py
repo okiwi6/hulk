@@ -3,6 +3,7 @@ from ssd.utils import assert_ndim
 from torch import nn
 
 from .head import BboxRegressionHead, ClassPredictorHead
+from .transformer import TransformerDecoderLayer, TransformerEncoderLayer
 
 
 class PositionalEncoding(nn.Module):
@@ -26,16 +27,8 @@ class DetrHead(nn.Module):
         super().__init__()
         self.num_classes = num_classes
 
-        self.encoder = nn.TransformerEncoder(
-            nn.TransformerEncoderLayer(feature_size, nheads, batch_first=True),
-            1,
-            nn.LayerNorm(feature_size),
-        )
-        self.decoder = nn.TransformerDecoder(
-            nn.TransformerDecoderLayer(feature_size, nheads, batch_first=True),
-            1,
-            nn.LayerNorm(feature_size),
-        )
+        self.encoder = TransformerEncoderLayer(feature_size, nheads, feature_size)
+        self.decoder = TransformerDecoderLayer(feature_size, nheads, feature_size)
         self.positional_encoding = PositionalEncoding(feature_size)
 
         self.classifier = ClassPredictorHead(feature_size, num_classes)
@@ -67,7 +60,7 @@ class DetrHead(nn.Module):
         xs, ys = torch.meshgrid(
             torch.linspace(x_offset, 1.0 - x_offset, W, device=device),
             torch.linspace(y_offset, 1.0 - y_offset, H, device=device),
-            indexing="ij",
+            indexing="xy",
         )
         token_positions = torch.stack((xs, ys), dim=-1).view(-1, 2)
         token_positional_encodings = self.positional_encoding(token_positions)
@@ -77,20 +70,17 @@ class DetrHead(nn.Module):
         queries = self.positional_encoding(sample_points)
         decodings = self.decoder(queries, encodings)
 
-        return torch.stack(
-            [
-                self._regress_and_predict(decoding, offset)
-                for decoding, offset in zip(decodings, sample_points)
-            ]
-        )
+        return self._regress_and_predict(decodings, sample_points)
 
     def _regress_and_predict(
-        self, decoding: torch.Tensor, sample_points: torch.Tensor
+        self, decodings: torch.Tensor, sample_points: torch.Tensor
     ) -> torch.Tensor:
+        b, n, c = decodings.shape
+
         return torch.cat(
             [
-                self.bbox_regressor(decoding, sample_points),
-                self.classifier(decoding),
+                self.bbox_regressor(decodings, sample_points),
+                self.classifier(decodings),
             ],
             dim=-1,
-        )
+        ).view(b, n, -1)

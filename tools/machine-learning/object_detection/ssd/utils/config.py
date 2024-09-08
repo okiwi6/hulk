@@ -37,7 +37,7 @@ class SchedulerConfig(Config):
     number_of_epochs: int = 300
     min_learning_rate: float = 1e-6
     warmump_learning_rate: float = 1e-6
-    warmup_epochs: int = 15
+    warmup_epochs: int = 30
 
 
 def build_scheduler(optimizer, scheduler_config: SchedulerConfig) -> Scheduler:

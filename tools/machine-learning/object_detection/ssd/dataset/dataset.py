@@ -15,3 +15,6 @@ class DetectionDataset[Inner, Batch](TorchDataset, ABC):
 
     def collate_fn(self, batch: list[Inner]) -> Batch:
         raise NotImplementedError
+
+    def __len__(self) -> int:
+        raise NotImplementedError

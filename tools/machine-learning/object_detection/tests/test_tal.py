@@ -1,12 +1,13 @@
 import torch
-from ssd.task_aligner.task_aligner import TaskAlignedDetections, compute_anchors
+from ssd.task_aligner.task_aligner import (TaskAlignedDetections,
+                                           compute_anchors)
 from ssd.utils import assert_ndim, assert_shape
 from torch.testing import assert_close
 from torchvision.tv_tensors import BoundingBoxes
 
 
 def test_compute_anchors():
-    anchors = compute_anchors((-2, -1), 21, (1, 2), 11)
+    anchors = compute_anchors(21, 11, (-2, -1), (1, 2))
     assert_shape(anchors, (21 * 11, 2))
 
     xs = anchors[:, 0]

@@ -1,42 +1,20 @@
 from dataclasses import dataclass
 
 import torch
-from ssd.utils import assert_ndim, assert_shape
 from ssd.task_aligner import TaskAlignedDetections
+from ssd.utils import assert_ndim, assert_shape
 from torch import nn
 from torch.nn.utils.rnn import PackedSequence, pack_sequence
 
-from .focal_loss import CategoricalFocalLoss
 from .box_regression_loss import BoxRegressionLoss
+from .focal_loss import CategoricalFocalLoss
+from .detection_loss import LossValues, DetectionLoss
 
-
-@dataclass
-class LossValues:
-    classification_loss: torch.Tensor
-    box_regression_loss: torch.Tensor
-
-    def __post_init__(self):
-        if not self.classification_loss.isfinite().all():
-            raise ValueError("Classification loss is not finite")
-        if not self.box_regression_loss.isfinite().all():
-            raise ValueError("Box regression loss is not finite")
-
-    def combine(
-        self, lambdas: torch.Tensor | list[float] | None = None
-    ) -> torch.Tensor:
-        if lambdas is None:
-            lambdas = torch.ones(2, device=self.classification_loss.device)
-        lambdas = torch.as_tensor(lambdas, device=self.classification_loss.device)
-
-        losses = torch.stack([self.classification_loss, self.box_regression_loss])
-        return torch.nansum(losses * lambdas)
-
-
-class QueryPointLoss(nn.Module):
+class QueryPointLoss(DetectionLoss):
     def __init__(self):
         super().__init__()
-        # self.classification_criterion = CategoricalFocalLoss(label_smoothing=0.05)
-        self.classification_criterion = nn.CrossEntropyLoss(label_smoothing=0.05)
+        self.classification_criterion = CategoricalFocalLoss(label_smoothing=0.05)
+        # self.classification_criterion = nn.CrossEntropyLoss(label_smoothing=0.05)
         self.box_regression_criterion = BoxRegressionLoss()
         self.matcher = TaskAlignedDetections()
 
@@ -48,11 +26,10 @@ class QueryPointLoss(nn.Module):
     ) -> LossValues:
         device = all_predictions.device
         assert all_predictions.isfinite().all()
-        assert all_predictions.ndim == 3
 
-        predicted_boxes = all_predictions[..., :4].flatten(0, 1)  # Batch * Queries, 4
+        predicted_boxes = all_predictions[..., :4].flatten(0, -2)  # Batch * Queries, 4
         predicted_classes = all_predictions[..., 4:].flatten(
-            0, 1
+            0, -2
         )  # Batch * Queries, Num Classes + 1
 
         classification_losses = []
