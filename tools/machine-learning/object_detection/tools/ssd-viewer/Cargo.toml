@@ -8,6 +8,8 @@ homepage.workspace = true
 [dependencies]
 clap.workspace = true
 eframe.workspace = true
-egui_extras = { workspace = true, features = ["image"] }
+egui_extras = { workspace = true, features = ["image", "file"] }
 image = { version = "0.25", features = ["png", "jpeg"] }
-ort = "2.0.0-rc.5"
+ort = { version = "2.0.0-rc.5", features = ["ndarray"] }
+color-eyre.workspace = true
+ndarray = { version = "0.16"}
