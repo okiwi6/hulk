@@ -4,7 +4,9 @@ pub mod github_integration;
 pub mod polygon;
 mod preview_widget;
 pub mod segmentator_widget;
+pub mod segmented_control;
 
+use std::env;
 use std::{io::Cursor, path::PathBuf};
 
 use color_eyre::{eyre::eyre, Result};
@@ -19,21 +21,16 @@ use github_integration::GithubAccount;
 use image::ImageReader;
 use preview_widget::PreviewWidget;
 use segmentator_widget::{SegmentationState, Segmentator};
+use segmented_control::SegmentedControl;
 use serde::Deserialize;
 
 #[derive(Debug, Default, Deserialize, Merge)]
-struct SegmentatorConfiguration {
+struct LabelloConfiguration {
     github_username: Option<String>,
 }
 
-impl Configuration for SegmentatorConfiguration {
+impl Configuration for LabelloConfiguration {
     const DEFAULT_FILENAME: &'static str = "segmentator.toml";
-}
-
-#[derive(Merge)]
-struct TestConfiguration {
-    foo: usize,
-    bar: String,
 }
 
 fn app_icon() -> IconData {
@@ -67,10 +64,9 @@ fn main() -> Result<()> {
         native_options,
         Box::new(|cc| {
             egui_extras::install_image_loaders(&cc.egui_ctx);
+            let configuration = LabelloConfiguration::load()?;
 
-            let configuration = SegmentatorConfiguration::load()?;
-
-            let app = SegmentatorApp::new(configuration);
+            let app = LabelloApp::new(configuration);
 
             Ok(Box::new(app))
         }),
@@ -79,19 +75,17 @@ fn main() -> Result<()> {
 }
 
 #[derive(Debug, Default)]
-pub struct SegmentatorApp {
-    configuration: SegmentatorConfiguration,
+pub struct LabelloApp {
+    configuration: LabelloConfiguration,
     image_paths: Vec<PathBuf>,
     current_index: Option<usize>,
     state: SegmentationState,
 }
 
-impl SegmentatorApp {
-    fn new(configuration: SegmentatorConfiguration) -> Self {
-        let image_paths = glob::glob("/home/rasmus/Downloads/Felix/*.png")
-            .expect("fail")
-            .flatten()
-            .collect();
+impl LabelloApp {
+    fn new(configuration: LabelloConfiguration) -> Self {
+        let path = env::args().nth(1).expect("failed to get path");
+        let image_paths = glob::glob(&path).expect("fail").flatten().collect();
 
         Self {
             configuration,
@@ -102,7 +96,7 @@ impl SegmentatorApp {
     }
 }
 
-impl App for SegmentatorApp {
+impl App for LabelloApp {
     fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
         TopBottomPanel::bottom("Preview")
             .min_height(200.0)
@@ -114,12 +108,21 @@ impl App for SegmentatorApp {
             });
         SidePanel::right("Tools")
             .resizable(false)
-            .min_width(200.0)
+            .min_width(300.0)
             .show(ctx, |ui| {
                 let width = ui.available_width();
-                ui.allocate_ui(vec2(width, 50.0), |ui| {
-                    ui.add(GithubAccount::new("oleflb").hover_text("Test 123"));
-                });
+                ui.add(
+                    SegmentedControl::new("segmented_control")
+                        .rounding(5.0)
+                        .add_segment("Segmentation")
+                        .add_segment("Detection")
+                        .add_segment("Classification"),
+                );
+                if let Some(name) = &self.configuration.github_username {
+                    ui.allocate_ui(vec2(width, 50.0), |ui| {
+                        ui.add(GithubAccount::new(name));
+                    });
+                }
 
                 ui.add(ControlPane)
             });
