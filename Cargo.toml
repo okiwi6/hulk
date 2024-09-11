@@ -218,4 +218,3 @@ incremental = true
 [profile.release-with-debug]
 inherits = "release"
 debug = true
-resolver = "2"
